@@ -2,9 +2,10 @@
 
 <img src="./assets/openbrowser-title.svg" alt="OpenBrowser" width="820">
 
-[![Version](https://img.shields.io/badge/version-1.0.1-blue)](https://github.com/lyu0805/OpenBrowser)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey)](https://github.com/lyu0805/OpenBrowser)
-[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/lyu0805/OpenBrowser)
+[![Platform](https://img.shields.io/badge/platform-macOS%20x86__64-blue)](https://github.com/lyu0805/OpenBrowser)
+[![License](https://img.shields.io/badge/source-MIT-green)](./LICENSE)
+[![Distribution](https://img.shields.io/badge/installer-AGPL--3.0-orange)](./Browserapp/THIRD-PARTY-NOTICES.md)
 [![Node](https://img.shields.io/badge/Node.js-LTS-339933.svg)](https://nodejs.org/)
 
 **多国语言支持 / Multi-language support**
@@ -65,11 +66,14 @@ OpenBrowser 是一款本地桌面指纹浏览器，用于管理多套互相隔�
 
 ## 支持平台
 
+当前**专注 macOS Intel**，先把一个平台做精再拓展。Windows / macOS arm64 / Linux 的代码路径保留在仓库中，但暂不作为 CI 构建、测试与发版目标。
+
 | 平台 | 架构 | 状态 |
 | --- | --- | --- |
-| Windows | x86_64 | ✅ 支持 |
-| macOS | x86_64 | ✅ 支持 |
-| macOS | arm64 | ✅ 支持 |
+| macOS | x86_64 (Intel) | ✅ 主力 —— 构建、测试、发版 |
+| macOS | arm64 | 🧪 实验性 —— 代码保留，best-effort，无 CI/发版保证 |
+| Windows | x86_64 | 🧪 实验性 —— 代码保留，best-effort，无 CI/发版保证 |
+| Linux | — | 🧪 仅平台探测 —— 无打包 |
 
 ## 快速开始
 
@@ -106,15 +110,17 @@ npm run package:portable
 
 ## 自测
 
+测试按依赖分组。`unit` 组离线运行（无内核、无 Electron 二进制、无网络），也是 CI 每次 push 所跑的内容：
+
 ```bash
 cd Browserapp
-npm run selftest
-npm run selftest:automation
-npm run selftest:protocol
-npm run selftest:isolation
-npm run selftest:kernel
-npm run selftest:cloud
+npm run selftest:unit          # 离线逻辑 / 协议 / 安全 / 指纹一致性
+npm run selftest:fingerprint   # 离线防关联一致性子集
+npm run selftest:e2e           # 真起内核 + 多窗口（需 git-lfs 内核二进制）
+npm run selftest:all           # unit + e2e
 ```
+
+原有的单个自测仍可用（`npm run selftest`、`selftest:automation`、`selftest:protocol`、`selftest:isolation`、`selftest:kernel`、`selftest:cloud`）。
 
 ## 项目结构
 
@@ -130,7 +136,7 @@ OpenBrowser/
 └── README_CN.md           # 中文说明
 ```
 
-仓库只包含源码与文档，不包含 Profile、Cookie、代理凭据、打包用内核二进制或安装包。官方 Windows x64 和 macOS arm64 构建会在 CI 打包时下载并集成对应 Wayfern 内核；macOS x86_64 构建使用 OpenBrowser 148 内核。
+仓库只包含源码与文档，不包含 Profile、Cookie、代理凭据、打包用内核二进制或安装包。macOS x86_64 构建使用 OpenBrowser 148 内核；实验性的 Windows / macOS arm64 构建会在 CI 打包时获取对应 Wayfern 内核。
 
 ## 数据与安全
 
@@ -142,6 +148,8 @@ OpenBrowser/
 
 ## 文档
 
+- [架构总览](./docs/ARCHITECTURE.md)
+- [更新日志](./CHANGELOG.md)
 - [自动化模块](./Browserapp/automation/README.md)
 - [免责声明](./DISCLAIMER.md)
 - [第三方组件声明](./Browserapp/THIRD-PARTY-NOTICES.md)
@@ -161,7 +169,12 @@ OpenBrowser/
 
 ## 许可证
 
-[MIT](./LICENSE)
+OpenBrowser 采用**双层**授权：
+
+- 本仓库的**项目源码**为 [MIT](./LICENSE)。
+- **分发的安装包**内置独立浏览器内核（Wayfern / OpenBrowser），该内核为 **AGPL-3.0** 授权。由于打包后的应用附带该内核，安装包整体受 **AGPL-3.0-or-later** 约束。详见 [`THIRD-PARTY-NOTICES.md`](./Browserapp/THIRD-PARTY-NOTICES.md)。
+
+一句话：源码按 MIT 复用；构建出的安装包按 AGPL-3.0 再分发。
 
 ---
 
