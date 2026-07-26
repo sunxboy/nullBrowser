@@ -1,5 +1,20 @@
 # Third-party notices
 
+## License summary (two-layer licensing)
+
+OpenBrowser's own source code is licensed under **MIT** (see `../LICENSE`).
+
+However, the **distributed installer** combines OpenBrowser with third-party
+components that are under the **AGPL-3.0** copyleft license — notably the
+`native-input-mirror.cs` code adapted from the AGPL-3.0 `chrome-power` project,
+and the bundled independent browser kernel (Wayfern / OpenBrowser, derived from
+Donut Browser). Because the packaged application ships and links these
+components, the installer **as a whole is governed by AGPL-3.0-or-later**.
+
+- Reuse the OpenBrowser source under **MIT**.
+- Redistribute the built installer under **AGPL-3.0-or-later**, and make the
+  corresponding source of the copyleft components available.
+
 ## chrome-power
 
 - Source: https://github.com/zmzimpl/chrome-power-app

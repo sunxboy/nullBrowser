@@ -1,3 +1,8 @@
+/**
+ * @deprecated Superseded by live-sync-v5.js (LiveSyncController). This module is
+ * NOT dead code: v5 still imports PersistentCdp / injection / LiveSyncV4 from
+ * here. Treat it as an internal dependency of v5, not a public entry point.
+ */
 const cdp = require('./cdp');
 
 class PersistentCdp {

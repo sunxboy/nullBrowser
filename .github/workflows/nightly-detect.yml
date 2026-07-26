@@ -1,0 +1,53 @@
+name: Nightly anti-detect regression
+
+# Best-effort online regression against public detection sites. Needs the
+# git-lfs kernel and network, so it is inherently flakier than the unit CI —
+# it runs on a schedule (and on demand) and does NOT gate pushes or releases.
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # 04:00 UTC daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detection-site regression (macOS x86_64)
+    runs-on: macos-15-intel
+    defaults:
+      run:
+        working-directory: Browserapp
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          sparse-checkout: |
+            /*
+            !/Browserapp/kernels/windows-x64/
+            !/Browserapp/kernels/macos-arm64/
+            !/Browserapp/kernels/wayfern/
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Browserapp/package-lock.json
+      - run: npm ci --include=dev
+      - name: Verify kernel seed
+        run: |
+          set -euo pipefail
+          BIN="kernels/macos-x64/chrome_148/openbrowser_148/OpenBrowser.app/Contents/MacOS/OpenBrowser"
+          test -f "$BIN"
+          chmod +x "$BIN" "${BIN}.bin" || true
+      - name: Run detection regression
+        run: npm run detect:regression
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detect-regression-report
+          path: ~/Library/Application Support/openbrowser/reports/*.json
+          if-no-files-found: ignore

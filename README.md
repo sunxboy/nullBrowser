@@ -2,9 +2,10 @@
 
 <img src="./assets/openbrowser-title.svg" alt="OpenBrowser" width="820">
 
-[![Version](https://img.shields.io/badge/version-1.0.1-blue)](https://github.com/lyu0805/OpenBrowser)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey)](https://github.com/lyu0805/OpenBrowser)
-[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/lyu0805/OpenBrowser)
+[![Platform](https://img.shields.io/badge/platform-macOS%20x86__64-blue)](https://github.com/lyu0805/OpenBrowser)
+[![License](https://img.shields.io/badge/source-MIT-green)](./LICENSE)
+[![Distribution](https://img.shields.io/badge/installer-AGPL--3.0-orange)](./Browserapp/THIRD-PARTY-NOTICES.md)
 [![Node](https://img.shields.io/badge/Node.js-LTS-339933.svg)](https://nodejs.org/)
 
 **Multi-language support / 多国语言支持**
@@ -65,11 +66,14 @@ The app supports multiple UI languages, currently including English and Chinese.
 
 ## Supported platforms
 
+Development currently focuses on **macOS Intel** to make one platform solid before expanding. Windows / macOS arm64 / Linux code paths are kept in the tree, but they are not a CI build, test, or release target right now.
+
 | Platform | Architecture | Status |
 | --- | --- | --- |
-| Windows | x86_64 | ✅ Supported |
-| macOS | x86_64 | ✅ Supported |
-| macOS | arm64 | ✅ Supported |
+| macOS | x86_64 (Intel) | ✅ Primary — built, tested, and released |
+| macOS | arm64 | 🧪 Experimental — code retained, best-effort, no CI/release guarantee |
+| Windows | x86_64 | 🧪 Experimental — code retained, best-effort, no CI/release guarantee |
+| Linux | — | 🧪 Detection only — no packaging |
 
 ## Quick start
 
@@ -106,15 +110,17 @@ Build output is written to `Browserapp/dist/`.
 
 ## Self-tests
 
+Tests are grouped by what they need. The `unit` group runs offline (no kernel, no Electron binary, no network) and is what CI runs on every push:
+
 ```bash
 cd Browserapp
-npm run selftest
-npm run selftest:automation
-npm run selftest:protocol
-npm run selftest:isolation
-npm run selftest:kernel
-npm run selftest:cloud
+npm run selftest:unit          # offline logic / protocol / security / fingerprint consistency
+npm run selftest:fingerprint   # offline anti-detect consistency subset
+npm run selftest:e2e           # real kernel + multi-window (needs git-lfs kernel binaries)
+npm run selftest:all           # unit + e2e
 ```
+
+Individual legacy self-tests remain available (`npm run selftest`, `selftest:automation`, `selftest:protocol`, `selftest:isolation`, `selftest:kernel`, `selftest:cloud`).
 
 ## Project layout
 
@@ -130,7 +136,7 @@ OpenBrowser/
 └── README_CN.md           # Chinese documentation
 ```
 
-This repository contains source code and documentation only. It does not include profiles, cookies, proxy credentials, bundled kernel binaries, or installers. Official Windows x64 and macOS arm64 builds download the matching Wayfern kernel during CI packaging; macOS x86_64 builds include the OpenBrowser 148 kernel.
+This repository contains source code and documentation only. It does not include profiles, cookies, proxy credentials, bundled kernel binaries, or installers. The macOS x86_64 build includes the OpenBrowser 148 kernel; experimental Windows / macOS arm64 builds obtain the matching Wayfern kernel during CI packaging.
 
 ## Data and security
 
@@ -142,6 +148,8 @@ This repository contains source code and documentation only. It does not include
 
 ## Documentation
 
+- [Architecture overview](./docs/ARCHITECTURE.md)
+- [Changelog](./CHANGELOG.md)
 - [Automation module](./Browserapp/automation/README.md)
 - [Disclaimer](./DISCLAIMER.md)
 - [Third-party notices](./Browserapp/THIRD-PARTY-NOTICES.md)
@@ -161,7 +169,12 @@ The repository does not store kernel binaries. Official platform packages obtain
 
 ## License
 
-[MIT](./LICENSE)
+OpenBrowser uses a **two-layer** license:
+
+- **Project source code** in this repository is [MIT](./LICENSE).
+- **Distributed installers** bundle an independent browser kernel (Wayfern / OpenBrowser) that is licensed under **AGPL-3.0**. Because the packaged app ships that kernel, the installer as a whole is governed by **AGPL-3.0-or-later**. See [`THIRD-PARTY-NOTICES.md`](./Browserapp/THIRD-PARTY-NOTICES.md).
+
+In short: reuse the source under MIT; redistribute the built installer under AGPL-3.0.
 
 ---
 
