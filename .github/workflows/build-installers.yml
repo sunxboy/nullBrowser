@@ -1,32 +1,22 @@
-name: Build OpenBrowser installers
+name: Build OpenBrowser installer
 
-# Product policy:
-# - macOS x86_64 / macOS arm64 / Windows x86_64 all ship WITH integrated kernels by default
-# - three platform jobs are independent (no shared cancel group, no fail-fast chain)
-# - each finished platform uploads its own assets to the same GitHub Release immediately
+# Product policy (macOS Intel focus):
+# - Primary delivery target is macOS x86_64, shipped WITH an integrated kernel.
+# - Windows / macOS arm64 are best-effort and live in build-installers-legacy.yml.
+# - Release notes come from CHANGELOG.md; keep that file up to date.
 
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to create, for example v1.0.2'
+        description: 'Release tag to create, for example v1.1.0'
         required: true
-        default: 'v1.0.3'
+        default: 'v1.1.0'
       prerelease:
         description: 'Mark the GitHub Release as a prerelease'
         required: false
         type: boolean
         default: false
-      target_platform:
-        description: 'Build one platform (recommended). Choose all for independent batch.'
-        required: false
-        type: choice
-        default: windows-x86_64
-        options:
-          - windows-x86_64
-          - macos-x86_64
-          - macos-arm64
-          - all
 
 permissions:
   contents: write
@@ -39,20 +29,16 @@ env:
   RELEASE_NOTES: |
     ## OpenBrowser ${{ inputs.release_tag }}
 
-    - 修复已知问题
-    - 改进稳定性
-    - Bug fixes and stability improvements
+    See [CHANGELOG.md](https://github.com/lyu0805/OpenBrowser/blob/main/CHANGELOG.md) for the full change list.
 
     ### 下载 / Downloads
 
     | 标签 / Tag | 文件 / File |
     | --- | --- |
-    | **Windows x86_64 · 内置内核** | `OpenBrowser-Windows-x86_64-with-kernel.exe` |
-    | **Windows x86_64 · 便携包** | `OpenBrowser-Windows-x86_64-with-kernel.zip` |
     | **macOS x86_64 · 内置内核** | `OpenBrowser-macOS-x86_64.dmg` |
-    | **macOS arm64 · 内置内核** | `OpenBrowser-macOS-arm64-with-kernel.dmg` |
 
     > 标签说明：`with-kernel` = 安装包内置独立浏览器内核，运行时无需再下载内核。
+    > Windows / macOS arm64 为 best-effort，见 build-installers-legacy.yml。
 
 jobs:
   ensure-release:
@@ -82,99 +68,12 @@ jobs:
             gh release view "$RELEASE_TAG" -R "$GH_REPO" >/dev/null
           fi
 
-  windows-x86_64:
-    name: Windows x86_64 (with kernel)
-    needs: ensure-release
-    if: ${{ inputs.target_platform == 'all' || inputs.target_platform == 'windows-x86_64' }}
-    runs-on: windows-2022
-    concurrency:
-      group: openbrowser-installers-${{ inputs.release_tag }}-windows-x86_64
-      cancel-in-progress: true
-    defaults:
-      run:
-        working-directory: Browserapp
-        shell: bash
-    env:
-      OPENBROWSER_PACKAGE_ARCH: x86_64
-      OPENBROWSER_PACKAGE_VARIANT: with-kernel
-      OPENBROWSER_BUNDLE_KERNEL: 'true'
-    steps:
-      # defaults.working-directory is Browserapp; before checkout use workspace root.
-      - name: Enable Windows long paths for git
-        working-directory: ${{ github.workspace }}
-        shell: pwsh
-        run: |
-          git config --global core.longpaths true
-          try {
-            New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force | Out-Null
-          } catch {
-            Write-Host "LongPathsEnabled registry write skipped: $_"
-          }
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-          sparse-checkout: |
-            /*
-            !/Browserapp/kernels/macos-x64/
-            !/Browserapp/kernels/macos-arm64/
-            !/Browserapp/kernels/openbrowser/
-          sparse-checkout-cone-mode: false
-      - name: Prune foreign kernels
-        run: rm -rf kernels/macos-x64 kernels/macos-arm64 kernels/openbrowser kernels/wayfern/macos-arm64 kernels/wayfern/macos-x64 || true
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: Browserapp/package-lock.json
-      - run: npm ci --include=dev
-      - name: Verify kernel seed
-        run: |
-          set -euo pipefail
-          test -f kernels/windows-x64/chrome.exe
-          test -f kernels/windows-x64/chrome.dll
-          npm run prepare:bundled-kernel
-      - name: Install NSIS
-        shell: pwsh
-        run: choco install nsis --no-progress --yes
-      - name: Self-tests
-        run: |
-          npm run selftest
-          npm run selftest:automation
-          npm run selftest:protocol
-          npm run selftest:isolation
-          npm run selftest:kernel
-      - run: npm run package:portable
-      - name: Verify package
-        run: |
-          set -euo pipefail
-          STEM="OpenBrowser-Windows-x86_64-with-kernel"
-          APP="dist/${STEM}/runtime/resources/app"
-          test -f "$APP/kernels/windows-x64/chrome.exe"
-          test -f "$APP/kernels/windows-x64/chrome.dll"
-          test ! -e "$APP/kernels/macos-x64"
-          test ! -e "$APP/kernels/macos-arm64"
-          test -f "dist/${STEM}.zip"
-          if [ ! -f "dist/${STEM}.exe" ]; then
-            echo "WARN: NSIS installer missing; portable zip will be uploaded"
-          fi
-      - name: Upload to release
-        run: |
-          set -euo pipefail
-          notes_file="$RUNNER_TEMP/openbrowser-release-notes.md"
-          printf '%s\n' "$RELEASE_NOTES" > "$notes_file"
-          assets=(dist/OpenBrowser-Windows-x86_64-with-kernel.zip)
-          if [ -f dist/OpenBrowser-Windows-x86_64-with-kernel.exe ]; then
-            assets=(dist/OpenBrowser-Windows-x86_64-with-kernel.exe dist/OpenBrowser-Windows-x86_64-with-kernel.zip)
-          fi
-          bash scripts/publish-release.sh "$RELEASE_TAG" "$notes_file" "${assets[@]}"
-
   macos-x86_64:
     name: macOS x86_64 (with kernel)
     needs: ensure-release
-    if: ${{ inputs.target_platform == 'all' || inputs.target_platform == 'macos-x86_64' }}
     runs-on: macos-15-intel
     concurrency:
-      group: openbrowser-installers-${{ inputs.release_tag }}-macos-x86_64
+      group: openbrowser-installer-${{ inputs.release_tag }}-macos-x86_64
       cancel-in-progress: true
     defaults:
       run:
@@ -212,12 +111,7 @@ jobs:
           chmod +x "$BIN" "${BIN}.bin" || true
           npm run prepare:bundled-kernel
       - name: Self-tests
-        run: |
-          npm run selftest
-          npm run selftest:automation
-          npm run selftest:protocol
-          npm run selftest:isolation
-          npm run selftest:kernel
+        run: npm run selftest:unit
       - run: npm run package:portable
       - name: Verify package
         run: |
@@ -236,69 +130,3 @@ jobs:
           printf '%s\n' "$RELEASE_NOTES" > "$notes_file"
           bash scripts/publish-release.sh "$RELEASE_TAG" "$notes_file" \
             dist/OpenBrowser-macOS-x86_64.dmg
-
-  macos-arm64:
-    name: macOS arm64 (with kernel)
-    needs: ensure-release
-    if: ${{ inputs.target_platform == 'all' || inputs.target_platform == 'macos-arm64' }}
-    runs-on: macos-14
-    concurrency:
-      group: openbrowser-installers-${{ inputs.release_tag }}-macos-arm64
-      cancel-in-progress: true
-    defaults:
-      run:
-        working-directory: Browserapp
-        shell: bash
-    env:
-      OPENBROWSER_PACKAGE_ARCH: arm64
-      OPENBROWSER_PACKAGE_VARIANT: with-kernel
-      OPENBROWSER_BUNDLE_KERNEL: 'true'
-      OPENBROWSER_MAC_DMG_FORMAT: ULMO
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-          sparse-checkout: |
-            /*
-            !/Browserapp/kernels/macos-x64/
-            !/Browserapp/kernels/windows-x64/
-            !/Browserapp/kernels/openbrowser/
-          sparse-checkout-cone-mode: false
-      - name: Prune foreign kernels
-        run: rm -rf kernels/macos-x64 kernels/windows-x64 kernels/openbrowser || true
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: Browserapp/package-lock.json
-      - run: npm ci --include=dev
-      - name: Verify kernel seed
-        run: |
-          set -euo pipefail
-          test -x kernels/macos-arm64/Wayfern.app/Contents/MacOS/Wayfern
-          npm run prepare:bundled-kernel
-      - name: Self-tests
-        run: |
-          npm run selftest
-          npm run selftest:automation
-          npm run selftest:protocol
-          npm run selftest:isolation
-          npm run selftest:kernel
-      - run: npm run package:portable
-      - name: Verify package
-        run: |
-          set -euo pipefail
-          APP="dist/OpenBrowser-macOS-arm64-with-kernel/OpenBrowser.app/Contents/Resources/app"
-          test -x "$APP/kernels/macos-arm64/Wayfern.app/Contents/MacOS/Wayfern"
-          test ! -e "$APP/kernels/macos-x64"
-          test ! -e "$APP/kernels/windows-x64"
-          test -f "dist/OpenBrowser-macOS-arm64-with-kernel.dmg"
-          codesign --verify --deep --strict "dist/OpenBrowser-macOS-arm64-with-kernel/OpenBrowser.app"
-          codesign -dv --verbose=2 "dist/OpenBrowser-macOS-arm64-with-kernel/OpenBrowser.app" | head -20 || true
-      - name: Upload to release
-        run: |
-          set -euo pipefail
-          notes_file="$RUNNER_TEMP/openbrowser-release-notes.md"
-          printf '%s\n' "$RELEASE_NOTES" > "$notes_file"
-          bash scripts/publish-release.sh "$RELEASE_TAG" "$notes_file" \
-            dist/OpenBrowser-macOS-arm64-with-kernel.dmg
