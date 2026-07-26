@@ -1,3 +1,8 @@
+/**
+ * @deprecated Legacy window-sync controller. The app uses live-sync-v5.js
+ * (LiveSyncController) in production; this file is only kept for its self-test
+ * and historical reference. Do not build new features on it.
+ */
 const cdp = require('./cdp');
 
 class PersistentCdp {
