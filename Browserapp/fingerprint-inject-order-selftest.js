@@ -45,7 +45,7 @@ function main() {
 
   // --- start-page re-samples fingerprint after inject settle ---
   const tpl = fs.readFileSync(path.join(__dirname, 'automation/start-page-template.js'), 'utf8');
-  assert.ok(/setTimeout\(function\(\)\{collectFingerprint\([^)]*\)\},350\)/.test(tpl), 'welcome page must re-collect at 350ms');
+  assert.ok(/setTimeout\(function\(\)\{collectFingerprint\([^)]*\)\},450\)/.test(tpl), 'welcome page must re-collect after inject settle (450ms)');
   assert.ok(/setTimeout\(function\(\)\{collectFingerprint\([^)]*\)\},1200\)/.test(tpl), 'welcome page must re-collect at 1200ms');
   assert.ok(tpl.includes('/api/fingerprint-report'), 'welcome page must POST samples to fingerprint-report');
 

@@ -1,0 +1,46 @@
+name: CI
+
+# Fast guardrail that runs on every push and pull request.
+# Only the offline unit self-tests run here: no kernel binaries (no git-lfs),
+# no Electron runtime (--ignore-scripts skips the binary download), no network.
+# Kernel / multi-window E2E tests live in the `e2e` group and run locally or on
+# the macOS packaging jobs, not on every push.
+
+on:
+  push:
+    paths:
+      - 'Browserapp/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'Browserapp/**'
+      - '.github/workflows/ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit self-tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Browserapp
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Browserapp/package-lock.json
+      - name: Install dev deps (no Electron binary)
+        run: npm ci --include=dev --ignore-scripts
+      - name: Unit self-tests
+        run: npm run selftest:unit
