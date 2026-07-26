@@ -151,7 +151,11 @@ function ensureBaseLogoPng(kind = 'pixel', size = 1024) {
     ? renderNativeLogoPil(size, tmp)
     : renderPixelLogoPil(size, tmp);
   if (ok) {
-    try { fs.copyFileSync(tmp, cache); } catch (_) { /* assets may be read-only */ }
+    // Cache the freshly rendered base back into assets/. Skipped under
+    // OPENBROWSER_NO_ASSET_CACHE (self-tests) so runs never dirty tracked assets.
+    if (!process.env.OPENBROWSER_NO_ASSET_CACHE) {
+      try { fs.copyFileSync(tmp, cache); } catch (_) { /* assets may be read-only */ }
+    }
     return tmp;
   }
   if (fs.existsSync(cache)) return cache;

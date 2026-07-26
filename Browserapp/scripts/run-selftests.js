@@ -111,6 +111,8 @@ function runGroup(name) {
     const t0 = process.hrtime.bigint();
     const res = spawnSync(process.execPath, [target], {
       cwd: APP_ROOT,
+      // Keep every test from caching rendered icons back into tracked assets/.
+      env: { ...process.env, OPENBROWSER_NO_ASSET_CACHE: '1' },
       stdio: ['ignore', 'pipe', 'pipe'],
       encoding: 'utf8',
     });

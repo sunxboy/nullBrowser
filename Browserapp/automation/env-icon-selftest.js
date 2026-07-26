@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 
+// Never cache rendered icons back into tracked assets/ during tests.
+process.env.OPENBROWSER_NO_ASSET_CACHE = '1';
+
 const assert = require('assert');
 const fs = require('fs');
 const fsp = require('fs/promises');
